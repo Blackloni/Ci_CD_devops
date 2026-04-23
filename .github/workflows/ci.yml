@@ -12,6 +12,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4 # clone le repo
       - uses: actions/setup-node@v4 # installe Node.js
@@ -25,6 +26,8 @@ jobs:
   test-unit:
     name: Tests unitaires
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     needs: lint # lance seulement si lint passe
     steps:
       - uses: actions/checkout@v4 # clone le repo
@@ -49,6 +52,7 @@ jobs:
   test-integration:
     name: Tests d'integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: test-unit # lance seulement si test-unit passe
     steps:
       - uses: actions/checkout@v4 # clone le repo
@@ -70,7 +74,9 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
-    needs: test-integration
+    needs: [lint, test-unit, test-integration]
+    timeout-minutes: 15
+
     steps:
 
       - uses: actions/checkout@v4 # clone le repo
@@ -78,6 +84,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: package-lock.json 
 
       - name: Installation des dépendances 
         run: npm ci
@@ -92,6 +99,9 @@ jobs:
     needs: build
     if: github.event_name == 'push' # pas de deploy sur les PR
     steps:  
-      - name: Deployer vers render
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+      # - name: Deployer vers render
+      #   run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+      
+      - name: 'Verification du service'
+        run: curl --fail --silent --show-error -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
 
